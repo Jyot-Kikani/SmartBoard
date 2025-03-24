@@ -112,15 +112,30 @@ function Whiteboard({ roomId }) {
       startPosRef.current = null;
     };
 
+    // Handle keyboard "Delete" key press
+    const handleKeyDown = (e) => {
+      // Prevent deletion when typing in an input field
+      if (e.target.tagName.toLowerCase() !== "input" && e.key === "Delete") {
+        const activeObjects = fabricCanvas.current.getActiveObjects();
+        if (activeObjects.length > 0) {
+          activeObjects.forEach((obj) => fabricCanvas.current.remove(obj));
+          fabricCanvas.current.discardActiveObject();
+          fabricCanvas.current.renderAll();
+        }
+      }
+    };
+
     // Attach event listeners
     fabricCanvas.current.on("mouse:down", onMouseDown);
     fabricCanvas.current.on("mouse:move", onMouseMove);
     fabricCanvas.current.on("mouse:up", onMouseUp);
+    document.addEventListener("keydown", handleKeyDown);
 
     setCanvasReady(true);
 
     // Cleanup
     return () => {
+      document.removeEventListener("keydown", handleKeyDown);
       if (fabricCanvas.current) {
         fabricCanvas.current.off("mouse:down");
         fabricCanvas.current.off("mouse:move");
@@ -131,12 +146,15 @@ function Whiteboard({ roomId }) {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-gray-100">
       {canvasReady && (
         <Toolbar currentTool={currentTool} setCurrentTool={setCurrentTool} />
       )}
       <div className="flex flex-1">
-        <canvas ref={canvasRef} className="border" />
+        <canvas
+          ref={canvasRef}
+          className="flex-1 border border-gray-300 shadow-lg"
+        />
         {canvasReady && <PropertiesPanel canvas={fabricCanvas.current} />}
       </div>
     </div>
