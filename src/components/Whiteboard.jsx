@@ -150,12 +150,30 @@ function Whiteboard({ roomId }) {
         if (e.target === document.body) e.preventDefault();
         isPanningRef.current = true;
         fabricCanvas.current.setCursor("grab");
-      } else if (e.key === "Delete" && e.target.tagName.toLowerCase() !== "input") {
+      } else if (
+        e.key === "Delete" &&
+        e.target.tagName.toLowerCase() !== "input"
+      ) {
         const activeObjects = fabricCanvas.current.getActiveObjects();
         if (activeObjects.length > 0) {
           activeObjects.forEach((obj) => fabricCanvas.current.remove(obj));
           fabricCanvas.current.discardActiveObject();
           fabricCanvas.current.renderAll();
+        }
+      } else if (
+        e.ctrlKey &&
+        e.key === "a" &&
+        e.target.tagName.toLowerCase() !== "input"
+      ) {
+        e.preventDefault(); // Prevent browser's default select all behavior
+        const allObjects = fabricCanvas.current.getObjects();
+        if (allObjects.length > 0) {
+          fabricCanvas.current.discardActiveObject(); // Clear current selection
+          const sel = new fabric.ActiveSelection(allObjects, {
+            canvas: fabricCanvas.current,
+          });
+          fabricCanvas.current.setActiveObject(sel);
+          fabricCanvas.current.requestRenderAll();
         }
       }
     };
@@ -206,11 +224,7 @@ function Whiteboard({ roomId }) {
         <canvas ref={canvasRef} />
       </div>
       {/* Properties Panel - Fixed on the left */}
-      {canvasReady && (
-        <div className="fixed top-0 left-0 h-full w-64 z-10">
-          <PropertiesPanel canvas={fabricCanvas.current} />
-        </div>
-      )}
+      {canvasReady && <PropertiesPanel canvas={fabricCanvas.current} />}
     </div>
   );
 }
