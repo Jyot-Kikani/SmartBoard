@@ -61,7 +61,7 @@ function PropertiesPanel({ canvas }) {
   if (!selectedObject) return null;
 
   return (
-    <div className="w-64 p-4 bg-white border-l border-gray-200 shadow-lg">
+    <div className="w-64 p-4 bg-white border-l border-gray-200 shadow-lg fixed h-[80%] overflow-y-scroll left-8 bottom-10 rounded-xl no-scrollbar">
       <h3 className="text-lg mb-4 font-semibold">Properties</h3>
 
       {/* Stroke Width */}

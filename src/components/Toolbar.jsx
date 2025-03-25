@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { FaPencilAlt } from "react-icons/fa";
 import { FaArrowPointer } from "react-icons/fa6";
 import { PiRectangleBold } from "react-icons/pi";
@@ -7,7 +7,7 @@ import { PiLineSegmentBold } from "react-icons/pi";
 
 function Toolbar({ currentTool, setCurrentTool }) {
   return (
-    <div className="bg-white border-b border-gray-200 p-2 flex space-x-2">
+    <div className="bg-white border-b border-gray-200 shadow-lg p-3 flex space-x-2 fixed top-4 z-10 justify-center left-0 right-0 mx-auto w-fit rounded-xl px-4">
       <button
         onClick={() => setCurrentTool("select")}
         className={

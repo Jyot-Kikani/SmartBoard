@@ -5,17 +5,17 @@ import PropertiesPanel from "./PropertiesPanel";
 function Whiteboard({ roomId }) {
   const canvasRef = useRef(null);
   const fabricCanvas = useRef(null);
+  const canvasContainerRef = useRef(null); // Ref for the parent div
   const [canvasReady, setCanvasReady] = useState(false);
-
-  // State for the current tool, defaulting to 'select'
   const [currentTool, setCurrentTool] = useState("select");
-
-  // Refs to track current tool, shape being drawn, and starting position
   const currentToolRef = useRef(currentTool);
   const drawingShapeRef = useRef(null);
   const startPosRef = useRef(null);
+  const isPanningRef = useRef(false);
+  const isDraggingRef = useRef(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
 
-  // Update cur rentToolRef whenever currentTool changes
+  // Update currentToolRef whenever currentTool changes
   useEffect(() => {
     currentToolRef.current = currentTool;
   }, [currentTool]);
@@ -24,7 +24,7 @@ function Whiteboard({ roomId }) {
   useEffect(() => {
     if (fabricCanvas.current) {
       fabricCanvas.current.isDrawingMode = currentTool === "pencil";
-      // Disable selection for shape tools, enable for select and pencil
+      fabricCanvas.current.freeDrawingBrush.width = 2;
       fabricCanvas.current.selection =
         currentTool === "select" || currentTool === "pencil";
     }
@@ -32,14 +32,36 @@ function Whiteboard({ roomId }) {
 
   // Initialize canvas and set up event listeners
   useEffect(() => {
-    // Use the global fabric object from the script tag
+    const CANVAS_WIDTH = 5000; // Large canvas width
+    const CANVAS_HEIGHT = 5000; // Large canvas height
+
     fabricCanvas.current = new fabric.Canvas(canvasRef.current, {
-      width: 800,
-      height: 600,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
     });
 
-    // Mouse down handler: Start creating shapes
+    // Center the scroll position of the parent div
+    if (canvasContainerRef.current) {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const canvasCenterX = CANVAS_WIDTH / 2;
+      const canvasCenterY = CANVAS_HEIGHT / 2;
+      const viewportCenterX = viewportWidth / 2;
+      const viewportCenterY = viewportHeight / 2;
+
+      // Set the scroll position to center the canvas
+      canvasContainerRef.current.scrollLeft = canvasCenterX - viewportCenterX;
+      canvasContainerRef.current.scrollTop = canvasCenterY - viewportCenterY;
+    }
+
+    // Mouse down handler: Start creating shapes or panning
     const onMouseDown = (options) => {
+      if (isPanningRef.current) {
+        isDraggingRef.current = true;
+        lastPosRef.current = { x: options.e.clientX, y: options.e.clientY };
+        return;
+      }
+
       const pointer = fabricCanvas.current.getPointer(options.e);
 
       if (currentToolRef.current === "rectangle") {
@@ -83,8 +105,17 @@ function Whiteboard({ roomId }) {
       }
     };
 
-    // Mouse move handler: Update shape dimensions
+    // Mouse move handler: Update shape dimensions or pan
     const onMouseMove = (options) => {
+      if (isPanningRef.current && isDraggingRef.current) {
+        const e = options.e;
+        const deltaX = e.clientX - lastPosRef.current.x;
+        const deltaY = e.clientY - lastPosRef.current.y;
+        lastPosRef.current = { x: e.clientX, y: e.clientY };
+        fabricCanvas.current.relativePan(new fabric.Point(deltaX, deltaY));
+        return;
+      }
+
       if (!drawingShapeRef.current) return;
       const pointer = fabricCanvas.current.getPointer(options.e);
       const shape = drawingShapeRef.current;
@@ -106,16 +137,20 @@ function Whiteboard({ roomId }) {
       fabricCanvas.current.renderAll();
     };
 
-    // Mouse up handler: Finalize shape creation
+    // Mouse up handler: Finalize shape creation or stop panning
     const onMouseUp = () => {
       drawingShapeRef.current = null;
       startPosRef.current = null;
+      isDraggingRef.current = false;
     };
 
-    // Handle keyboard "Delete" key press
+    // Handle keyboard events for panning and deletion
     const handleKeyDown = (e) => {
-      // Prevent deletion when typing in an input field
-      if (e.target.tagName.toLowerCase() !== "input" && e.key === "Delete") {
+      if (e.key === " ") {
+        if (e.target === document.body) e.preventDefault();
+        isPanningRef.current = true;
+        fabricCanvas.current.setCursor("grab");
+      } else if (e.key === "Delete" && e.target.tagName.toLowerCase() !== "input") {
         const activeObjects = fabricCanvas.current.getActiveObjects();
         if (activeObjects.length > 0) {
           activeObjects.forEach((obj) => fabricCanvas.current.remove(obj));
@@ -125,17 +160,27 @@ function Whiteboard({ roomId }) {
       }
     };
 
+    const handleKeyUp = (e) => {
+      if (e.key === " ") {
+        isPanningRef.current = false;
+        isDraggingRef.current = false;
+        fabricCanvas.current.setCursor("default");
+      }
+    };
+
     // Attach event listeners
     fabricCanvas.current.on("mouse:down", onMouseDown);
     fabricCanvas.current.on("mouse:move", onMouseMove);
     fabricCanvas.current.on("mouse:up", onMouseUp);
     document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
 
     setCanvasReady(true);
 
     // Cleanup
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp);
       if (fabricCanvas.current) {
         fabricCanvas.current.off("mouse:down");
         fabricCanvas.current.off("mouse:move");
@@ -146,17 +191,26 @@ function Whiteboard({ roomId }) {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="relative h-screen bg-gray-100 overflow-auto">
+      {/* Toolbar - Fixed at the top */}
       {canvasReady && (
-        <Toolbar currentTool={currentTool} setCurrentTool={setCurrentTool} />
+        <div className="fixed top-0 left-0 w-full z-10">
+          <Toolbar currentTool={currentTool} setCurrentTool={setCurrentTool} />
+        </div>
       )}
-      <div className="flex flex-1">
-        <canvas
-          ref={canvasRef}
-          className="flex-1 border border-gray-300 shadow-lg"
-        />
-        {canvasReady && <PropertiesPanel canvas={fabricCanvas.current} />}
+      {/* Canvas Container with Scrollbars */}
+      <div
+        ref={canvasContainerRef}
+        className="absolute top-0 left-0 w-full h-full overflow-auto no-scrollbar"
+      >
+        <canvas ref={canvasRef} />
       </div>
+      {/* Properties Panel - Fixed on the left */}
+      {canvasReady && (
+        <div className="fixed top-0 left-0 h-full w-64 z-10">
+          <PropertiesPanel canvas={fabricCanvas.current} />
+        </div>
+      )}
     </div>
   );
 }
