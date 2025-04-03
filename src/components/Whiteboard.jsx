@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import Toolbar from "./Toolbar";
 import PropertiesPanel from "./PropertiesPanel";
 import socket from "../socket";
+import { FaCommentDots, FaChevronRight, FaChevronLeft } from "react-icons/fa"; // Icons for toggle
+import ChatPanel from "./ChatPanel";
 
 // Ensure fabric objects have an 'id' property for tracking
 fabric.Object.prototype.toObject = (function (toObject) {
@@ -31,6 +33,7 @@ function Whiteboard({ roomId }) {
 
   // Ref for tracking other users' cursors
   const cursorsRef = useRef({}); // { userId: fabricObject }
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Update currentToolRef whenever currentTool changes
   useEffect(() => {
@@ -634,31 +637,52 @@ function Whiteboard({ roomId }) {
     <div className="relative w-screen h-screen overflow-hidden bg-gray-200">
       {/* Toolbar */}
       {canvasReady && (
-        <Toolbar currentTool={currentTool} setCurrentTool={setCurrentTool} />
+          <Toolbar currentTool={currentTool} setCurrentTool={setCurrentTool} />
       )}
 
-      {/* Canvas Container (for scrolling/panning) */}
+      {/* Canvas Container */}
       <div
         ref={canvasContainerRef}
-        className="absolute top-0 left-0 w-full h-full overflow-auto cursor-default no-scrollbar" // Hide scrollbars, manage via pan
-        // Add cursor style based on isPanningRef maybe?
+        className="absolute top-0 left-0 w-full h-full overflow-auto cursor-default no-scrollbar"
       >
-        {/* The actual canvas element */}
         <canvas ref={canvasRef} />
       </div>
 
       {/* Properties Panel */}
-      {/* Pass canvas instance and roomId */}
       {canvasReady && fabricCanvas.current && (
         <PropertiesPanel canvas={fabricCanvas.current} roomId={roomId} />
       )}
 
-      {/* Loading/Waiting Indicator (Optional) */}
+      {/* Loading Indicator */}
       {!canvasReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-400 bg-opacity-50">
-          <p className="text-white text-xl">Loading Whiteboard...</p>
-        </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-400 bg-opacity-50">
+              <p className="text-white text-xl">Loading Whiteboard...</p>
+          </div>
       )}
+
+      {/* Chat Panel Toggle Button */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className={`fixed top-1/2 ${isChatOpen ? 'right-80' : 'right-4'} z-30 p-2 bg-blue-600 text-white rounded-l-lg shadow-md transform -translate-y-1/2 transition-right duration-300 ease-in-out hover:bg-blue-700`}
+        aria-label={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
+        title={isChatOpen ? "Close AI Chat" : "Open AI Chat"}
+      >
+        {isChatOpen ? <FaChevronRight size={18} /> : <FaChevronLeft size={18} />}
+      </button>
+
+      {/* Conditionally Render Chat Panel */}
+      <div
+         className={`fixed top-0 right-0 h-full z-20 transition-transform duration-300 ease-in-out ${
+           isChatOpen ? 'translate-x-0' : 'translate-x-full'
+         }`}
+         style={{ width: '320px' }} // Explicit width might be needed depending on CSS
+       >
+         {/* Pass the fabricCanvas ref to ChatPanel */}
+         {/* Render ChatPanel if open and canvas is ready */}
+         {isChatOpen && canvasReady && fabricCanvas.current && (
+            <ChatPanel fabricCanvasRef={fabricCanvas} />
+         )}
+      </div>
     </div>
   );
 }
