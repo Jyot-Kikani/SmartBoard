@@ -1,41 +1,49 @@
-import React, { useState } from "react";
+// client/src/components/RoomJoin.jsx
+import React, { useState } from 'react';
+import socket from '../socket';
 
-function RoomJoin({ onJoin }) {
-  const [roomId, setRoomId] = useState("");
+function RoomJoin({ setRoomId }) {
+  const [inputRoomId, setInputRoomId] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (roomId.trim()) {
-      onJoin(roomId);
-    } else {
-      const newRoomId = Math.random().toString(36).substring(7);
-      onJoin(newRoomId);
+  const handleJoinRoom = () => {
+    if (inputRoomId.trim()) {
+      socket.connect(); // Connect to the server
+      socket.emit('join-room', inputRoomId);
+      setRoomId(inputRoomId);
     }
   };
 
+  const handleCreateRoom = () => {
+    const newRoomId = Math.random().toString(36).substring(2, 9); // Generate a random room ID
+    socket.connect();
+    socket.emit('join-room', newRoomId);
+    setRoomId(newRoomId);
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[url(https://static.vecteezy.com/system/resources/previews/013/396/404/non_2x/crumpled-paper-texture-realisric-crease-sheet-free-vector.jpg)] bg-cover">
-      <form
-        onSubmit={handleSubmit}
-        className="p-8 bg-white rounded-lg shadow-xl w-sm"
-      >
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 font-display">
-          Join or Create a Room
-        </h2>
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <h1 className="text-3xl mb-4">Join or Create a Whiteboard Room</h1>
+      <div className="flex space-x-4">
         <input
           type="text"
-          value={roomId}
-          onChange={(e) => setRoomId(e.target.value)}
-          placeholder="Enter Room ID or leave blank to create new"
-          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 mb-4 font-display"
+          value={inputRoomId}
+          onChange={(e) => setInputRoomId(e.target.value)}
+          placeholder="Enter Room ID"
+          className="p-2 border rounded"
         />
         <button
-          type="submit"
-          className="w-full p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          onClick={handleJoinRoom}
+          className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Join Room
         </button>
-      </form>
+        <button
+          onClick={handleCreateRoom}
+          className="p-2 bg-green-500 text-white rounded hover:bg-green-600"
+        >
+          Create Room
+        </button>
+      </div>
     </div>
   );
 }
